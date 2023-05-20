@@ -12,10 +12,12 @@ public class OutputFileWriter {
 
     public void writeDataToFile(String data) {
         try {
-            if (!Files.exists(FILE_PATH)) {
-                Files.createFile(FILE_PATH);
+            if (data != null) {
+                if (!Files.exists(FILE_PATH)) {
+                    Files.createFile(FILE_PATH);
+                }
+                Files.writeString(FILE_PATH, data, StandardOpenOption.APPEND);
             }
-            Files.writeString(FILE_PATH, data, StandardOpenOption.APPEND);
         } catch (IOException e) {
             e.printStackTrace();
         }

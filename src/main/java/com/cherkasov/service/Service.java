@@ -10,6 +10,9 @@ import java.util.UUID;
 public class Service {
     private final Repository repository;
     private final OutputFileWriter outputFileWriter;
+    private static final int DEFAULT_PRICE = 1000000000;
+    private static final int DEFAULT_SIZE = 100000000;
+
 
     public Service(Repository repository, OutputFileWriter outputFileWriter) {
         this.repository = repository;
@@ -25,10 +28,22 @@ public class Service {
     private Order createOrder(String[] infoForOrder) {
         Order order = new Order();
         order.setId(UUID.randomUUID().toString());
-        order.setPrice(Integer.parseInt(infoForOrder[1]));
-        order.setSize(Integer.parseInt(infoForOrder[2]));
+        int actualPrice = Integer.parseInt(infoForOrder[1]);
+        order.setPrice(checkAndCreateValue(actualPrice, DEFAULT_PRICE));
+        int actualSize = Integer.parseInt(infoForOrder[2]);
+        order.setSize(checkAndCreateValue(actualSize, DEFAULT_SIZE));
         order.setOrderType(createOrderTypeByInfo(infoForOrder[3]));
         return order;
+    }
+
+    private int checkAndCreateValue(int actualValue, int defaultValue) {
+        if (actualValue < 0) {
+            return 0;
+        } else if (actualValue > defaultValue) {
+            return defaultValue;
+        } else {
+            return actualValue;
+        }
     }
 
     private OrderType createOrderTypeByInfo(String line) {
@@ -62,13 +77,16 @@ public class Service {
     }
 
     private void writeBestPriceAndSizeByType(OrderType orderType) {
-        Order order = repository.getBestPriceSizeByType(orderType);
-        outputFileWriter.writeDataToFile(String.format("%d,%d%n", order.getPrice(), order.getSize()));
+        repository.getBestPriceSizeByType(orderType)
+                .ifPresent(order ->
+                        outputFileWriter.writeDataToFile(String.format("%d,%d\n",
+                                order.getPrice(), order.getSize())));
     }
 
     private void writeSizeByPrice(int price) {
-        repository.getSizeByPrice(price)
-                .ifPresent(order -> outputFileWriter.writeDataToFile(String.format("%d%n", order.getSize())));
+        if (price >= 0 && price <= DEFAULT_PRICE)
+            repository.getSizeByPrice(price)
+                    .ifPresent(order -> outputFileWriter.writeDataToFile(String.format("%d\n", order.getSize())));
     }
 
 }
