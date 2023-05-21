@@ -8,6 +8,8 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 import java.io.IOException;
+import java.net.URISyntaxException;
+import java.net.URL;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -21,7 +23,7 @@ import static org.mockito.Mockito.*;
 
 class InputFileParserTest {
     private static final String TEST_FILE_NAME = "input.txt";
-    private static final Path TEST_FILE_PATH = Paths.get(TEST_FILE_NAME);
+    private static final Path TEST_FILE_PATH = getInputFilePath();
     private static final Charset CHARSET = StandardCharsets.UTF_8;
 
     @Mock
@@ -34,12 +36,26 @@ class InputFileParserTest {
         target = new InputFileParser(service);
     }
 
+
     @AfterEach
     void tearDown() throws IOException {
         if (Files.exists(TEST_FILE_PATH)) {
             Files.delete(TEST_FILE_PATH);
         }
     }
+
+    private static Path getInputFilePath() {
+        try {
+            URL url = InputFileParser.class.getProtectionDomain().getCodeSource().getLocation();
+            Path jarPath = Paths.get(url.toURI());
+            Path folderPath = jarPath.getParent();
+            return folderPath.resolve(TEST_FILE_NAME);
+        } catch (URISyntaxException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
 
     @Test
     void parseFile_ValidInputFile_CallsCorrectServiceMethods() throws IOException {

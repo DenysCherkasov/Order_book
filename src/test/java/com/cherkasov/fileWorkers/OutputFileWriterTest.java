@@ -5,6 +5,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
+import java.net.URISyntaxException;
+import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -13,7 +15,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 public class OutputFileWriterTest {
     private static final String TEST_FILE_NAME = "output.txt";
-    private static final Path TEST_FILE_PATH = Paths.get(TEST_FILE_NAME);
+    private static final Path TEST_FILE_PATH = getOutputFilePath();
 
     private OutputFileWriter target;
 
@@ -26,6 +28,18 @@ public class OutputFileWriterTest {
     void tearDown() throws IOException {
         if (Files.exists(TEST_FILE_PATH)) {
             Files.delete(TEST_FILE_PATH);
+        }
+    }
+
+    private static Path getOutputFilePath() {
+        try {
+            URL url = InputFileParser.class.getProtectionDomain().getCodeSource().getLocation();
+            Path jarPath = Paths.get(url.toURI());
+            Path folderPath = jarPath.getParent();
+            return folderPath.resolve(TEST_FILE_NAME);
+        } catch (URISyntaxException e) {
+            e.printStackTrace();
+            return null;
         }
     }
 
