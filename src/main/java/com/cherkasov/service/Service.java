@@ -5,14 +5,9 @@ import com.cherkasov.models.Order;
 import com.cherkasov.models.OrderType;
 import com.cherkasov.repository.Repository;
 
-import java.util.UUID;
-
 public class Service {
     private final Repository repository;
     private final OutputFileWriter outputFileWriter;
-    private static final int DEFAULT_PRICE = 1000000000;
-    private static final int DEFAULT_SIZE = 100000000;
-
 
     public Service(Repository repository, OutputFileWriter outputFileWriter) {
         this.repository = repository;
@@ -21,29 +16,9 @@ public class Service {
 
     public void saveOrder(String line) {
         String[] infoForOrder = line.split(",");
-        Order order = createOrder(infoForOrder);
+        Order order = new Order(createOrderTypeByInfo(infoForOrder[3]),
+                Integer.parseInt(infoForOrder[1]), Integer.parseInt(infoForOrder[2]));
         repository.save(order);
-    }
-
-    private Order createOrder(String[] infoForOrder) {
-        Order order = new Order();
-        order.setId(UUID.randomUUID().toString());
-        int actualPrice = Integer.parseInt(infoForOrder[1]);
-        order.setPrice(checkAndCreateValue(actualPrice, DEFAULT_PRICE));
-        int actualSize = Integer.parseInt(infoForOrder[2]);
-        order.setSize(checkAndCreateValue(actualSize, DEFAULT_SIZE));
-        order.setOrderType(createOrderTypeByInfo(infoForOrder[3]));
-        return order;
-    }
-
-    private int checkAndCreateValue(int actualValue, int defaultValue) {
-        if (actualValue < 0) {
-            return 0;
-        } else if (actualValue > defaultValue) {
-            return defaultValue;
-        } else {
-            return actualValue;
-        }
     }
 
     private OrderType createOrderTypeByInfo(String line) {
@@ -68,25 +43,34 @@ public class Service {
     public void writeInfoInFile(String line) {
         String[] info = line.split(",");
         if (info.length == 2 && info[1].equals("best_bid")) {
-            writeBestPriceAndSizeByType(OrderType.BID);
+            writeBestBidPriceAndSize();
         } else if (info.length == 2 && info[1].equals("best_ask")) {
-            writeBestPriceAndSizeByType(OrderType.ASK);
+            writeBestAskPriceAndSize();
         } else {
             writeSizeByPrice(Integer.parseInt(info[2]));
         }
     }
 
-    private void writeBestPriceAndSizeByType(OrderType orderType) {
-        repository.getBestPriceSizeByType(orderType)
+    private void writeBestAskPriceAndSize() {
+        repository.getBestAskPriceSize()
+                .ifPresent(order ->
+                        outputFileWriter.writeDataToFile(String.format("%d,%d\n",
+                                order.getPrice(), order.getSize())));
+    }
+
+    private void writeBestBidPriceAndSize() {
+        repository.getBestBidPriceSize()
                 .ifPresent(order ->
                         outputFileWriter.writeDataToFile(String.format("%d,%d\n",
                                 order.getPrice(), order.getSize())));
     }
 
     private void writeSizeByPrice(int price) {
-        if (price >= 0 && price <= DEFAULT_PRICE)
-            repository.getSizeByPrice(price)
-                    .ifPresent(order -> outputFileWriter.writeDataToFile(String.format("%d\n", order.getSize())));
+        repository.getSizeByPrice(price)
+                .ifPresentOrElse(
+                        size -> outputFileWriter.writeDataToFile(String.format("%d\n", size)),
+                        () -> outputFileWriter.writeDataToFile(String.format("%d\n", 0)));
     }
+
 
 }

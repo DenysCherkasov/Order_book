@@ -7,55 +7,71 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 public class Repository {
     private final List<Order> orderRepository = new ArrayList<>();
 
-    public void save(Order order) {
-        orderRepository.add(order);
+    public void save(Order newOrder) {
+        orderRepository.stream()
+                .filter(savedOrder -> savedOrder.getPrice() == newOrder.getPrice())
+                .findAny()
+                .ifPresentOrElse(
+                        savedOrder -> savedOrder.setSize(newOrder.getSize()),
+                        () -> orderRepository.add(newOrder));
     }
 
     final Comparator<Order> ascPriceComparator
             = Comparator.comparingInt(Order::getPrice);
 
     public void removeSizeInCheapestAsk(int size) {
-        orderRepository.stream()
+        List<Order> sortedOrders = orderRepository.stream()
                 .filter(order -> order.getOrderType() == OrderType.ASK)
                 .sorted(ascPriceComparator)
-                .limit(1)
-                .forEach(order -> {
-                    int newSize = order.getSize() - size;
-                    if (newSize >= 0) {
-                        order.setSize(order.getSize() - size);
-                    } else {
-                        order.setSize(0);
-                    }
-                });
+                .collect(Collectors.toList());
+        removeSizes(size, sortedOrders);
     }
 
     final Comparator<Order> descPriceComparator
             = Comparator.comparingInt(Order::getPrice).reversed();
 
     public void removeSizeInMostExpensiveBid(int size) {
-        orderRepository.stream()
+        List<Order> sortedOrders = orderRepository.stream()
                 .filter(order -> order.getOrderType() == OrderType.BID)
                 .sorted(descPriceComparator)
-                .limit(1)
-                .forEach(order -> {
-                    int newSize = order.getSize() - size;
-                    order.setSize(Math.max(newSize, 0));
-                });
+                .collect(Collectors.toList());
+        removeSizes(size, sortedOrders);
     }
 
-    public Optional<Order> getBestPriceSizeByType(OrderType orderType) {
+    private void removeSizes(int size, List<Order> sortedOrders) {
+        for (Order order : sortedOrders) {
+            if (size <= order.getSize()) {
+                order.setSize(order.getSize() - size);
+                break;
+            } else {
+                size -= order.getSize();
+                order.setSize(0);
+            }
+        }
+    }
+
+    public Optional<Order> getBestBidPriceSize() {
         return orderRepository.stream()
-                .filter(order -> order.getOrderType() == orderType)
+                .filter(order -> order.getOrderType() == OrderType.BID && order.getSize() != 0)
                 .max(ascPriceComparator);
     }
 
-    public Optional<Order> getSizeByPrice(int price) {
+    public Optional<Order> getBestAskPriceSize() {
+        return orderRepository.stream()
+                .filter(order -> order.getOrderType() == OrderType.ASK && order.getSize() != 0)
+                .max(descPriceComparator);
+    }
+
+
+    public Optional<Integer> getSizeByPrice(int price) {
         return orderRepository.stream()
                 .filter(order -> order.getPrice() == price)
+                .map(Order::getSize)
                 .findAny();
     }
 }
